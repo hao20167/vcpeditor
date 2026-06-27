@@ -1,0 +1,97 @@
+name: "Push Release: macOS x64"
+
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: push-release-macos-x64-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  QT_VERSION: 6.10.0
+
+jobs:
+  release:
+    name: "Build and release macOS x64 DMG"
+    runs-on: macos-13
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Qt environment
+        uses: jurplel/install-qt-action@v4
+        with:
+          cache: true
+          modules: 'qt5compat'
+          version: ${{ env.QT_VERSION }}
+
+      - uses: actions/checkout@v7
+        with:
+          repository: KDE/extra-cmake-modules
+          path: third_party/extra-cmake-modules
+
+      - uses: actions/checkout@v7
+        with:
+          repository: KDE/syntax-highlighting
+          path: third_party/syntax-highlighting
+
+      - name: Install extra-cmake-modules
+        run: |
+          cd third_party/extra-cmake-modules
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_HTML_DOCS=OFF -DBUILD_MAN_DOCS=OFF -DBUILD_QTHELP_DOCS=OFF -DBUILD_TESTING=OFF
+          sudo cmake --build build --config Release --parallel $(nproc) --target install
+
+      - name: Install ksyntax-highlighting
+        run: |
+          cd third_party/syntax-highlighting
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DBUILD_HTML_DOCS=OFF -DBUILD_MAN_DOCS=OFF -DBUILD_QTHELP_DOCS=OFF -DBUILD_TESTING=OFF
+          sudo cmake --build build --config Release --parallel $(nproc) --target install
+
+      - name: Build
+        run: |
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DPORTABLE_VERSION=Off
+          cmake --build build --config Release -j4
+
+      - name: Get release metadata
+        id: release
+        shell: bash
+        run: |
+          VERSION=$(sed -nE 's/^project\(cpeditor LANGUAGES CXX VERSION ([^)]+)\)$/\1/p' CMakeLists.txt)
+          SHA_SHORT=$(git rev-parse --short=8 HEAD)
+          TAG_NAME="push-${VERSION}-${SHA_SHORT}"
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "sha_short=${SHA_SHORT}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Pack to DMG
+        run: |
+          cd build
+          mkdir dmg
+          cd dmg
+          mv ../cpeditor.app cpeditor.app
+          ../../../Qt/*/*/bin/macdeployqt cpeditor.app
+          cp ../../dist/mac/cpeditor.icns cpeditor.app/Contents/Resources
+          ln -s /Applications Applications
+          hdiutil create -volname cpeditor-${{ steps.release.outputs.version }}-x64 -srcfolder . -ov -format UDZO cpeditor-${{ steps.release.outputs.version }}-macos-x64.dmg
+
+      - name: Create release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.release.outputs.tag_name }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          draft: false
+          name: CP Editor ${{ steps.release.outputs.version }} (${{ steps.release.outputs.sha_short }})
+          files: build/dmg/cpeditor-${{ steps.release.outputs.version }}-macos-x64.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
