@@ -1,15 +1,7 @@
 name: "Update AUR"
 
 on:
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - ".github/**"
-      - "!.github/workflows/push_aur.yml"
-      - "**.md"
-      - ".all-contributorsrc"
-      - ".gitignore"
+  workflow_dispatch:
 
 jobs:
   aur:

@@ -1,6 +1,7 @@
 name: "CI: Build Test"
 
-on: [push, pull_request]
+on:
+  pull_request:
 
 env:
   QT_VERSION: 6.10.0

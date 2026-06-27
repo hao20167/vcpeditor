@@ -93,7 +93,7 @@ jobs:
         with:
           tag_name: ${{ steps.release.outputs.tag_name }}
           target_commitish: ${{ github.sha }}
-          prerelease: true
+          prerelease: false
           draft: false
           name: CP Editor ${{ steps.release.outputs.version }} (${{ steps.release.outputs.sha_short }})
           files: build/dmg/cpeditor-${{ steps.release.outputs.version }}-macos-${{ steps.release.outputs.arch }}.dmg

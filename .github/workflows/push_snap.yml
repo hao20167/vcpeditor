@@ -1,15 +1,7 @@
 name: "Update Snap"
 
 on:
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - ".github/**"
-      - "!.github/workflows/push_snap.yml"
-      - "**.md"
-      - ".all-contributorsrc"
-      - ".gitignore"
+  workflow_dispatch:
 
 jobs:
   snap:
