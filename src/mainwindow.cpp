@@ -88,7 +88,6 @@ MainWindow::MainWindow(int index, AppWindow *parent)
             &MainWindow::onCompilationErrorOccurred);
     connect(stressTesting, &Widgets::StressTesting::compilationKilled, this, &MainWindow::onCompilationKilled);
     connect(stressTesting, &Widgets::StressTesting::compilationFailed, this, &MainWindow::onCompilationFailed);
-    QTimer::singleShot(0, [this] { editor->resize(0, 0); }); // refresh editor geometry
 }
 
 MainWindow::MainWindow(const QString &fileOpen, int index, AppWindow *parent) : MainWindow(index, parent)
@@ -849,6 +848,9 @@ void MainWindow::formatSource(bool selectionOnly, bool logOnNoChange)
         Extensions::YAPFormatter(editor, language, selectionOnly, logOnNoChange, log, this).format();
     else
         Extensions::ClangFormatter(editor, language, selectionOnly, logOnNoChange, log, this).format();
+
+    if (fakevimHandler)
+        fakevimHandler->setTextCursor(editor->textCursor());
 }
 
 void MainWindow::setLanguage(const QString &lang)
